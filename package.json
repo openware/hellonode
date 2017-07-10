@@ -1,0 +1,17 @@
+{
+  "name": "hellonode",
+  "version": "0.0.1",
+  "description": "Hello Node package",
+  "main": "server.js",
+  "scripts": {
+    "test": "mocha",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bloomon/hellonode.git"
+  },
+  "devDependencies": {
+    "mocha": "^3.4.2"
+  }
+}
