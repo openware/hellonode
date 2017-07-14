@@ -1,0 +1,23 @@
+resources:
+- name: hellonode-repository
+  type: git
+  source:
+    uri: https://github.com/helios-technologies/hellonode.git
+    branch: master
+
+- name: hellonode-image
+  type: docker-image
+  source:
+    repository: eu.gcr.io/hc-public/hellonode
+    username: _json_key
+    password: {{gcr_password}}
+
+jobs:
+- name: hellonode
+  serial: true
+  plan:
+  - get: hellonode-repository
+    trigger: true
+  - put: hellonode-image
+    params:
+      build: hellonode-repository
