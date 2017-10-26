@@ -28,29 +28,33 @@ cd hellonode
 
 build the docker image into the minikube engine
 ```
-docker build -t hellonode:1.0 .
+docker build -t gcr.io/helios-devel/hellonode:0.1.0 .
 docker images
 # or use make
 ```
 
 Push to container in GCR
 ```
-gcloud docker push
+gcloud docker -- push gcr.io/helios-devel/hellonode:0.1.0
 ```
 
 Create a new deployment
 ```
-kubectl run hello-node --image=hellonode:1.0 --port=8080
+kubectl run hello-node --image=gcr.io/helios-devel/hellonode:0.1.0 --port=8080
 ```
 
-Expose the service using a proxy tunnel
-```
-kubectl port-forward redis-master 8080:8080
-```
-
-List all resources and curl your service
+List all resources
 ```
 kubectl get all
+```
+
+Expose locally the service using a proxy tunnel
+```
+kubectl port-forward hello-node 8080:8080
+```
+
+Curl your service
+```
 curl http://localhost:8080/
 ```
 
