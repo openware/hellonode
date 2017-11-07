@@ -1,63 +1,4 @@
 # HelloNode
-## HelloNode example for Google Container Engine (GCE)
-
-### Install gcloud SDK
-
-Install for Linux
-```
-read https://cloud.google.com/sdk/
-```
-
-Run minikube and set kubeconfig
-```
-gcloud login
-gcloud container clusters
-```
-
-Test if the connection to the cluster works
-```
-kubectl get nodes
-```
-
-### Git clone this repository and build image
-
-```
-git clone https://github.com/helios-technologies/hellonode.git
-cd hellonode
-```
-
-build the docker image into the minikube engine
-```
-docker build -t gcr.io/helios-devel/hellonode:0.1.0 .
-docker images
-# or use make
-```
-
-Push to container in GCR
-```
-gcloud docker -- push gcr.io/helios-devel/hellonode:0.1.0
-```
-
-Create a new deployment
-```
-kubectl run hello-node --image=gcr.io/helios-devel/hellonode:0.1.0 --port=8080
-```
-
-List all resources
-```
-kubectl get all
-```
-
-Expose locally the service using a proxy tunnel
-```
-kubectl port-forward hello-node 8080:8080
-```
-
-Curl your service
-```
-curl http://localhost:8080/
-```
-
 
 ## HelloNode example for minikube
 
@@ -67,6 +8,14 @@ Install for MacOSX
 ```
 brew cask install minikube
 brew install kubectl
+```
+or using
+```
+# kubectl
+curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/darwin/amd64/kubectl
+
+# minikube
+curl -Lo minikube https://storage.googleapis.com/minikube/releases/v0.23.0/minikube-darwin-amd64 && chmod +x minikube && sudo mv minikube /usr/local/bin/
 ```
 
 Run minikube and set kubeconfig

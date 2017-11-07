@@ -1,25 +1,178 @@
 # Check `docs/pipeline.md` to get info about this file
+resource_types:
+  - name: slack-notification
+    type: docker-image
+    source:
+      repository: cfcommunity/slack-notification-resource
+      tag: latest
+
+  - name: pull-request
+    type: docker-image
+    source:
+      repository: jtarchie/pr
 
 resources:
-- name: .-repository
-  type: git
-  source:
-    uri: https://github.com/calj/..git
-    branch: master
+  - name: hellonode-repository
+    type: git
+    source:
+      uri: git@github.com:helios-technologies/hellonode.git
+      branch: master
+      private_key: ((git_private_key))
 
-- name: .-image
-  type: docker-image
-  source:
-    repository: calj/.
-    username: {{docker_username}}
-    password: {{docker_password}}
+  - name: pull-requests
+    type: pull-request
+    source:
+      access_token: ((github_token))
+      base: master
+      private_key: ((git_private_key))
+      repo: helios-technologies/hellonode
+      uri: git@github.com:helios-technologies/hellonode.git
+
+  - name: hellonode-image
+    type: docker-image
+    source:
+      repository: hellonode
+      username: _json_key
+      password: ((gcr_password))
+
+  - name: slack-alert
+    type: slack-notification
+    source:
+      url: https://hooks.slack.com/services/((slack_webhook))
 
 jobs:
-- name: .
-  serial: true
-  plan:
-  - get: .-repository
-    trigger: true
-  - put: .-image
-    params:
-      build: .-repository
+  - name: pr-build
+    plan:
+      - get: pull-requests
+        trigger: true
+      - task: tag
+        file: pull-requests/config/pipelines/tasks/create-pull-requests-tag.yml
+      - put: hellonode-image
+        params:
+          build: pull-requests
+          tag: tag/name
+
+  - name: pr-unit
+    serial: true
+    plan:
+      - get: pull-requests
+        passed: [pr-build]
+        trigger: true
+      - get: hellonode-image
+        passed: [pr-build]
+        trigger: true
+      - put: pull-requests
+        params:
+          path: pull-requests
+          status: pending
+      - task: run-tests
+        file: pull-requests/config/pipelines/tasks/run-pr-tests.yml
+        on_success:
+          do:
+          - put: pull-requests
+            params:
+              path: pull-requests
+              status: success
+          - put: slack-alert
+            params:
+              channel: '#ci-alerts'
+              text: |
+                hellonode PR tests have passed! :thumbsup_all:
+                Check it out at:
+                $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
+                or at:
+                $ATC_EXTERNAL_URL/builds/$BUILD_ID
+                see on github:
+                `cat pull-requests/.git/url`
+
+        on_failure:
+          do:
+          - put: pull-requests
+            params:
+              path: pull-requests
+              status: failure
+          - put: slack-alert
+            params:
+              channel: '#ci-alerts'
+              text: |
+                hellonode PR tests have failed! :thumbsdown_all:
+                Check it out at:
+                $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
+                or at:
+                $ATC_EXTERNAL_URL/builds/$BUILD_ID
+                see on github:
+                `cat pull-requests/.git/url`
+
+  - name: master-build
+    serial: true
+    plan:
+      - get: hellonode-repository
+        trigger: true
+      - task: tag
+        file: hellonode-repository/config/pipelines/tasks/create-repository-tag.yml
+      - put: hellonode-image
+        params:
+          build: hellonode-repository
+          tag: tag/name
+      - put: slack-alert
+        params:
+          channel: '#ci-alerts'
+          text: |
+            hellonode master branch was built and pushed!
+            Check it out at:
+            $ATC_EXTERNAL_URL/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
+            or at:
+            $ATC_EXTERNAL_URL/builds/$BUILD_ID
+
+  - name: master-unit
+    serial: true
+    plan:
+      - get: hellonode-repository
+        passed: [master-build]
+        trigger: true
+      - get: hellonode-image
+        passed: [master-build]
+        trigger: true
+      - task: run-tests
+        file: hellonode-repository/config/pipelines/tasks/run-master-tests.yml
+        on_success:
+          put: slack-alert
+          params:
+            channel: '#ci-alerts'
+            text: |
+              hellonode master tests have passed! :thumbsup_all:
+              Check it out at:
+              $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
+              or at:
+              $ATC_EXTERNAL_URL/builds/$BUILD_ID
+
+        on_failure:
+          put: slack-alert
+          params:
+            channel: '#ci-alerts'
+            text: |
+              hellonode master tests have failed! :thumbsdown_all:
+              Check it out at:
+              $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
+              or at:
+              $ATC_EXTERNAL_URL/builds/$BUILD_ID
+
+  - name: helm-deploy
+    serial: true
+    plan:
+      - get: hellonode-repository
+      - task: helm-deploy
+        file: hellonode-repository/config/pipelines/tasks/helm-deploy.yml
+        params:
+          GOOGLE_APPLICATION_JSON: ((gcr_password))
+          KUBECONFIG_FILE: ((kubeconfig))
+        on_success:
+          put: slack-alert
+          params:
+            channel: '#ci-alerts'
+            text: |
+              hellonode deployment has succeeded! :thumbsup_all:
+              Check it out at:
+              $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
+              or at:
+              $ATC_EXTERNAL_URL/builds/$BUILD_ID

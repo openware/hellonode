@@ -1,19 +1,24 @@
 VERSION := $(shell cat VERSION)
-IMAGE   := gcr.io/helios-devel/hellonode:$(VERSION)
+IMAGE   := hellonode:$(VERSION)
+
+.PHONY: default build push run ci deploy
 
 default: build run
 
 build:
-	@echo '> Building "." docker image...'
+	@echo '> Building "hellonode" docker image...'
 	@docker build -t $(IMAGE) .
 
+push: build
+	docker push $(IMAGE)
+
 run:
-	@echo '> Starting "." container...'
+	@echo '> Starting "hellonode" container...'
 	@docker run -d $(IMAGE)
 
 ci:
-	@fly -t ci set-pipeline -p . -c config/pipelines/review.yml --load-vars-from config/pipelines/secrets.yml -n
-	@fly -t ci unpause-pipeline -p .
+	@fly -t ci set-pipeline -p hellonode -c config/pipelines/review.yml -n
+	@fly -t ci unpause-pipeline -p hellonode
 
-deploy:
-	@helm install ./config/charts/. --set "image.tag=$(VERSION)"
+deploy: build
+	@helm install ./config/charts/hellonode --set "image.tag=$(VERSION)"
