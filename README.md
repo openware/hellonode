@@ -38,13 +38,13 @@ cd hellonode
 
 build the docker image into the minikube engine
 ```
-docker build -t hellonode:1.0 .
+docker build -t hellonode:1.0.0 .
 docker images
 ```
 
 Create a new deployment
 ```
-kubectl run hello-node --image=hellonode:1.0 --port=8080
+kubectl run hello-node --image=hellonode:1.0.0 --port=8080
 ```
 
 Expose the service onto a VM port
@@ -56,4 +56,21 @@ List all resources and curl your service
 ```
 kubectl get all
 curl $(minikube service hello-node --url)
+```
+
+Now using helm
+```
+helm install ./config/charts/hellonode
+```
+
+Overidding a value:
+```
+helm install ./config/charts/hellonode --set "image.tag=$(cat VERSION)"
+or
+make deploy
+```
+
+Generate with kite :
+```
+kite generate service --git git@github.com:helios-technologies/hellonode.git --image hellonode  --image-version=1.0.0 --chart-version=0.1.0 .
 ```
