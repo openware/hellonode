@@ -1,4 +1,4 @@
-FROM node:8.0
+FROM node:15
 
 COPY server.js .
 
