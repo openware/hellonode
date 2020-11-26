@@ -1,0 +1,14 @@
+---
+kind: pipeline
+name: "Push"
+
+steps:
+  - name: "Build Docker image"
+    image: plugins/docker
+    settings:
+      username:
+        from_secret: quay_username
+      password:
+        from_secret: quay_password
+      repo: quay.io/openware/hellonode
+      registry: quay.io
