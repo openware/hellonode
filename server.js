@@ -1,11 +1,16 @@
 const http = require('http');
-const timeout = 150000;
+const url = require('url');
 
 const handleRequest = function(request, response) {
   console.log('Received request for URL: ' + request.url);
 
-  switch (request.url) {
+  parsedUrl = url.parse(request.url, true)
+
+  switch (parsedUrl.pathname) {
     case "/timeout":
+      period = parsedUrl.query.period
+      timeout = isNaN(period) ? 0 : period * 1000
+
       setTimeout(()=>{
         response.writeHead(200);
         response.end(`Hello World after ${timeout/1000}s!\n`);
